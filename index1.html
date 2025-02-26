@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quran Reading Progress Tracker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #1abc9c;
+            --accent: #3498db;
+            --light: #ecf0f1;
+            --dark: #34495e;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: var(--light);
+            color: var(--dark);
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: var(--primary);
+            color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        
+        @media (min-width: 768px) {
+            .container {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-header {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .card-header h2 {
+            color: var(--primary);
+            font-size: 1.5rem;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        
+        thead {
+            background-color: var(--primary);
+            color: white;
+            position: sticky;
+            top: 0;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--light);
+        }
+        
+        tr:hover {
+            background-color: rgba(26, 188, 156, 0.1);
+        }
+        
+        td input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        td input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--light);
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        td.completed {
+            color: var(--success);
+            font-weight: 500;
+        }
+        
+        .progress-container {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .chart-wrapper {
+            height: 300px;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--dark);
+        }
+        
+        .btn-success {
+            background-color: var(--success);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background-color: #27ae60;
+        }
+        
+        .btn-danger {
+            background-color: var(--danger);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            justify-content: center;
+        }
+        
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stat-card h3 {
+            color: var(--dark);
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+        
+        .stat-card p {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        
+        .stat-card.khatm p {
+            color: var(--accent);
+        }
+        
+        .stat-card.deep p {
+            color: var(--secondary);
+        }
+        
+        .stat-card.light p {
+            color: var(--warning);
+        }
+        
+        .stat-card.total p {
+            color: var(--success);
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 15px;
+            color: var(--dark);
+            font-size: 0.9rem;
+        }
+        
+        .badge {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 500;
+            color: white;
+        }
+        
+        .badge-today {
+            background-color: var(--accent);
+        }
+
+        #daySelector {
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid var(--light);
+            background-color: white;
+            margin-left: 10px;
+        }
+        
+        .highlight {
+            animation: highlight 1.5s;
+        }
+        
+        @keyframes highlight {
+            0% { background-color: rgba(52, 152, 219, 0.1); }
+            50% { background-color: rgba(52, 152, 219, 0.3); }
+            100% { background-color: rgba(52, 152, 219, 0.1); }
+        }
+        
+        .current-day {
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Quran Reading Progress Tracker</h1>
+        <p>Track your monthly Quran reading plan</p>
+    </header>
+    
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h2>Daily Reading Plan</h2>
+                <div>
+                    Jump to: 
+                    <select id="daySelector">
+                        <option value="">Select a day</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-container">
+                <table id="readingTable">
+                    <thead>
+                        <tr>
+                            <th>Day</th>
+                            <th>New Reading (Khatm)</th>
+                            <th>Deep Revision</th>
+                            <th>Light Revision</th>
+                            <th>Notes</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Table content will be generated here -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="action-buttons">
+                <button id="saveBtn" class="btn btn-success">Save Progress</button>
+                <button id="resetBtn" class="btn btn-danger">Reset Progress</button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h2>Progress Overview</h2>
+            </div>
+            <div class="summary-stats">
+                <div class="stat-card khatm">
+                    <h3>New Reading (Khatm)</h3>
+                    <p id="khatmProgress">0/30</p>
+                </div>
+                <div class="stat-card deep">
+                    <h3>Deep Revision</h3>
+                    <p id="deepProgress">0/30</p>
+                </div>
+                <div class="stat-card light">
+                    <h3>Light Revision</h3>
+                    <p id="lightProgress">0/30</p>
+                </div>
+                <div class="stat-card total">
+                    <h3>Total Progress</h3>
+                    <p id="totalProgress">0%</p>
+                </div>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="progressChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="card progress-container">
+            <div class="card-header">
+                <h2>Detailed Progress</h2>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="juzProgressChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>Made with ❤️ for Quran memorization and revision</p>
+    </footer>
+    
+    <script>
+        // Data from the provided table
+        const readingPlanData = [
+            {day: 1, khatm: "Juz' 1", deep: "Juz' 15", light: "Juz' 26"},
+            {day: 2, khatm: "Juz' 2", deep: "Juz' 15", light: "Juz' 26"},
+            {day: 3, khatm: "Juz' 3", deep: "Juz' 15", light: "Juz' 26"},
+            {day: 4, khatm: "Juz' 4", deep: "Juz' 16", light: "Juz' 26"},
+            {day: 5, khatm: "Juz' 5", deep: "Juz' 16", light: "Juz' 26"},
+            {day: 6, khatm: "Juz' 6", deep: "Juz' 16", light: "Juz' 26"},
+            {day: 7, khatm: "Juz' 7", deep: "Juz' 17", light: "Juz' 27"},
+            {day: 8, khatm: "Juz' 8", deep: "Juz' 17", light: "Juz' 27"},
+            {day: 9, khatm: "Juz' 9", deep: "Juz' 17", light: "Juz' 27"},
+            {day: 10, khatm: "Juz' 10", deep: "Juz' 18", light: "Juz' 27"},
+            {day: 11, khatm: "Juz' 11", deep: "Juz' 18", light: "Juz' 27"},
+            {day: 12, khatm: "Juz' 12", deep: "Juz' 18", light: "Juz' 27"},
+            {day: 13, khatm: "Juz' 13", deep: "Juz' 19", light: "Juz' 28"},
+            {day: 14, khatm: "Juz' 14", deep: "Juz' 19", light: "Juz' 28"},
+            {day: 15, khatm: "Juz' 15", deep: "Juz' 19", light: "Juz' 28"},
+            {day: 16, khatm: "Juz' 16", deep: "Juz' 20", light: "Juz' 28"},
+            {day: 17, khatm: "Juz' 17", deep: "Juz' 20", light: "Juz' 28"},
+            {day: 18, khatm: "Juz' 18", deep: "Juz' 20", light: "Juz' 28"},
+            {day: 19, khatm: "Juz' 19", deep: "Juz' 21", light: "Juz' 29"},
+            {day: 20, khatm: "Juz' 20", deep: "Juz' 21", light: "Juz' 29"},
+            {day: 21, khatm: "Juz' 21", deep: "Juz' 21", light: "Juz' 29"},
+            {day: 22, khatm: "Juz' 22", deep: "Juz' 22", light: "Juz' 29"},
+            {day: 23, khatm: "Juz' 23", deep: "Juz' 22", light: "Juz' 29"},
+            {day: 24, khatm: "Juz' 24", deep: "Juz' 22", light: "Juz' 29"},
+            {day: 25, khatm: "Juz' 25", deep: "Juz' 23", light: "Juz' 30"},
+            {day: 26, khatm: "Juz' 26", deep: "Juz' 23", light: "Juz' 30"},
+            {day: 27, khatm: "Juz' 27", deep: "Juz' 23", light: "Juz' 30"},
+            {day: 28, khatm: "Juz' 28", deep: "Juz' 24", light: "Juz' 30"},
+            {day: 29, khatm: "Juz' 29", deep: "Juz' 24", light: "Juz' 30"},
+            {day: 30, khatm: "Juz' 30", deep: "Juz' 24", light: "Juz' 30"}
+        ];
+        
+        // Initialize user progress from localStorage or create new
+        let userProgress = JSON.parse(localStorage.getItem('quranProgress')) || initializeProgress();
+        
+        // DOM elements
+        const tableBody = document.getElementById('tableBody');
+        const saveBtn = document.getElementById('saveBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const khatmProgressEl = document.getElementById('khatmProgress');
+        const deepProgressEl = document.getElementById('deepProgress');
+        const lightProgressEl = document.getElementById('lightProgress');
+        const totalProgressEl = document.getElementById('totalProgress');
+        const daySelector = document.getElementById('daySelector');
+        
+        // Chart elements
+        const progressChart = document.getElementById('progressChart').getContext('2d');
+        const juzProgressChart = document.getElementById('juzProgressChart').getContext('2d');
+        
+        // Charts
+        let mainChart;
+        let juzChart;
+        
+        // Get current day (1-30)
+        const getCurrentDay = () => {
+            const now = new Date();
+            return Math.min(now.getDate(), 30);
+        };
+        
+        // Initialize progress data structure
+        function initializeProgress() {
+            const progress = {
+                days: {},
+                lastSaved: new Date().toISOString()
+            };
+            readingPlanData.forEach(day => {
+                progress.days[day.day] = {
+                    khatm: false,
+                    deep: false,
+                    light: false,
+                    notes: ''
+                };
+            });
+            return progress;
+        }
+        
+        // Populate the day selector dropdown
+        function populateDaySelector() {
+            for (let i = 1; i <= 30; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = `Day ${i}`;
+                daySelector.appendChild(option);
+            }
+            daySelector.value = getCurrentDay();
+            daySelector.addEventListener('change', () => {
+                if (daySelector.value) {
+                    const dayRow = document.getElementById(`day-${daySelector.value}`);
+                    if (dayRow) {
+                        dayRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        dayRow.classList.add('highlight');
+                        setTimeout(() => dayRow.classList.remove('highlight'), 2000);
+                    }
+                }
+            });
+        }
+        
+        // Render the table with reading plan and checkboxes
+        function renderTable() {
+            tableBody.innerHTML = '';
+            const currentDay = getCurrentDay();
+            readingPlanData.forEach(day => {
+                const row = document.createElement('tr');
+                row.id = `day-${day.day}`;
+                if (day.day === currentDay) row.classList.add('current-day');
+                
+                // Day column
+                const dayCol = document.createElement('td');
+                dayCol.textContent = day.day;
+                if (day.day === currentDay) {
+                    const todayBadge = document.createElement('span');
+                    todayBadge.className = 'badge badge-today';
+                    todayBadge.textContent = 'Today';
+                    dayCol.appendChild(document.createElement('br'));
+                    dayCol.appendChild(todayBadge);
+                }
+                row.appendChild(dayCol);
+                
+                // New Reading column
+                const khatmCol = document.createElement('td');
+                khatmCol.textContent = day.khatm;
+                const khatmCheck = document.createElement('input');
+                khatmCheck.type = 'checkbox';
+                khatmCheck.checked = userProgress.days[day.day]?.khatm || false;
+                khatmCheck.addEventListener('change', (e) => {
+                    userProgress.days[day.day].khatm = e.target.checked;
+                    updateProgressDisplay();
+                });
+                khatmCol.appendChild(document.createElement('br'));
+                khatmCol.appendChild(khatmCheck);
+                if (userProgress.days[day.day]?.khatm) khatmCol.classList.add('completed');
+                row.appendChild(khatmCol);
+                
+                // Deep Revision column
+                const deepCol = document.createElement('td');
+                deepCol.textContent = day.deep;
+                const deepCheck = document.createElement('input');
+                deepCheck.type = 'checkbox';
+                deepCheck.checked = userProgress.days[day.day]?.deep || false;
+                deepCheck.addEventListener('change', (e) => {
+                    userProgress.days[day.day].deep = e.target.checked;
+                    updateProgressDisplay();
+                });
+                deepCol.appendChild(document.createElement('br'));
+                deepCol.appendChild(deepCheck);
+                if (userProgress.days[day.day]?.deep) deepCol.classList.add('completed');
+                row.appendChild(deepCol);
+                
+                // Light Revision column
+                const lightCol = document.createElement('td');
+                lightCol.textContent = day.light;
+                const lightCheck = document.createElement('input');
+                lightCheck.type = 'checkbox';
+                lightCheck.checked = userProgress.days[day.day]?.light || false;
+                lightCheck.addEventListener('change', (e) => {
+                    userProgress.days[day.day].light = e.target.checked;
+                    updateProgressDisplay();
+                });
+                lightCol.appendChild(document.createElement('br'));
+                lightCol.appendChild(lightCheck);
+                if (userProgress.days[day.day]?.light) lightCol.classList.add('completed');
+                row.appendChild(lightCol);
+                
+                // Notes column
+                const notesCol = document.createElement('td');
+                const notesInput = document.createElement('input');
+                notesInput.type = 'text';
+                notesInput.value = userProgress.days[day.day]?.notes || '';
+                notesInput.placeholder = 'Add notes...';
+                notesInput.addEventListener('change', (e) => {
+                    userProgress.days[day.day].notes = e.target.value;
+                });
+                notesCol.appendChild(notesInput);
+                row.appendChild(notesCol);
+                
+                // Status column
+                const statusCol = document.createElement('td');
+                const allCompleted = userProgress.days[day.day]?.khatm && 
+                                     userProgress.days[day.day]?.deep && 
+                                     userProgress.days[day.day]?.light;
+                if (allCompleted) {
+                    statusCol.textContent = '✅ Complete';
+                    statusCol.classList.add('completed');
+                    statusCol.style.color = 'var(--success)';
+                } else if (userProgress.days[day.day]?.khatm || 
+                          userProgress.days[day.day]?.deep || 
+                          userProgress.days[day.day]?.light) {
+                    statusCol.textContent = '🔄 In Progress';
+                    statusCol.style.color = 'var(--warning)';
+                } else {
+                    statusCol.textContent = '⏳ Pending';
+                    statusCol.style.color = 'var(--dark)';
+                }
+                row.appendChild(statusCol);
+                
+                tableBody.appendChild(row);
+            });
+        }
+        
+        // Calculate and update progress display
+        function updateProgressDisplay() {
+            let khatmCount = 0, deepCount = 0, lightCount = 0;
+            Object.values(userProgress.days).forEach(day => {
+                if (day.khatm) khatmCount++;
+                if (day.deep) deepCount++;
+                if (day.light) lightCount++;
+            });
+            
+            khatmProgressEl.textContent = `${khatmCount}/30`;
+            deepProgressEl.textContent = `${deepCount}/30`;
+            lightProgressEl.textContent = `${lightCount}/30`;
+            
+            const totalTasks = 30 * 3;
+            const completedTasks = khatmCount + deepCount + lightCount;
+            const percentage = Math.round((completedTasks / totalTasks) * 100);
+            totalProgressEl.textContent = `${percentage}%`;
+            
+            // Update table status and completed classes
+            readingPlanData.forEach(day => {
+                const statusCell = document.querySelector(`#day-${day.day}`).lastElementChild;
+                const allCompleted = userProgress.days[day.day]?.khatm && 
+                                     userProgress.days[day.day]?.deep && 
+                                     userProgress.days[day.day]?.light;
+                if (allCompleted) {
+                    statusCell.textContent = '✅ Complete';
+                    statusCell.classList.add('completed');
+                    statusCell.style.color = 'var(--success)';
+                } else if (userProgress.days[day.day]?.khatm || 
+                           userProgress.days[day.day]?.deep || 
+                           userProgress.days[day.day]?.light) {
+                    statusCell.textContent = '🔄 In Progress';
+                    statusCell.classList.remove('completed');
+                    statusCell.style.color = 'var(--warning)';
+                } else {
+                    statusCell.textContent = '⏳ Pending';
+                    statusCell.classList.remove('completed');
+                    statusCell.style.color = 'var(--dark)';
+                }
+                
+                const cells = document.querySelector(`#day-${day.day}`).children;
+                if (userProgress.days[day.day]?.khatm) {
+                    cells[1].classList.add('completed');
+                } else {
+                    cells[1].classList.remove('completed');
+                }
+                if (userProgress.days[day.day]?.deep) {
+                    cells[2].classList.add('completed');
+                } else {
+                    cells[2].classList.remove('completed');
+                }
+                if (userProgress.days[day.day]?.light) {
+                    cells[3].classList.add('completed');
+                } else {
+                    cells[3].classList.remove('completed');
+                }
+            });
+            
+            updateCharts();
+        }
+        
+        // Initialize and update charts
+        function updateCharts() {
+            const days = Array.from({length: 30}, (_, i) => `Day ${i+1}`);
+            const khatmData = [];
+            const deepData = [];
+            const lightData = [];
+            
+            for (let i = 1; i <= 30; i++) {
+                khatmData.push(userProgress.days[i]?.khatm ? 1 : 0);
+                deepData.push(userProgress.days[i]?.deep ? 1 : 0);
+                lightData.push(userProgress.days[i]?.light ? 1 : 0);
+            }
+            
+            const khatmCumulative = [];
+            const deepCumulative = [];
+            const lightCumulative = [];
+            let khatmSum = 0, deepSum = 0, lightSum = 0;
+            for (let i = 0; i < 30; i++) {
+                khatmSum += khatmData[i];
+                deepSum += deepData[i];
+                lightSum += lightData[i];
+                khatmCumulative.push(khatmSum);
+                deepCumulative.push(deepSum);
+                lightCumulative.push(lightSum);
+            }
+            
+            if (mainChart) {
+                mainChart.data.datasets[0].data = khatmCumulative;
+                mainChart.data.datasets[1].data = deepCumulative;
+                mainChart.data.datasets[2].data = lightCumulative;
+                mainChart.update();
+            } else {
+                mainChart = new Chart(progressChart, {
+                    type: 'line',
+                    data: {
+                        labels: days,
+                        datasets: [
+                            {
+                                label: 'New Reading (Khatm)',
+                                data: khatmCumulative,
+                                borderColor: '#3498db',
+                                backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                                tension: 0.1,
+                                fill: true
+                            },
+                            {
+                                label: 'Deep Revision',
+                                data: deepCumulative,
+                                borderColor: '#1abc9c',
+                                backgroundColor: 'rgba(26, 188, 156, 0.2)',
+                                tension: 0.1,
+                                fill: true
+                            },
+                            {
+                                label: 'Light Revision',
+                                data: lightCumulative,
+                                borderColor: '#f39c12',
+                                backgroundColor: 'rgba(243, 156, 18, 0.2)',
+                                tension: 0.1,
+                                fill: true
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 30,
+                                title: {
+                                    display: true,
+                                    text: 'Completed Days'
+                                }
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Cumulative Progress'
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Prepare Juz' progress data
+            let juzProgress = Array(30).fill(0);
+            for (let i = 1; i <= 30; i++) {
+                const dayData = readingPlanData.find(d => d.day === i);
+                if (!dayData) continue;
+                if (userProgress.days[i]?.khatm) {
+                    const khatmJuz = parseInt(dayData.khatm.replace("Juz' ", "")) - 1;
+                    juzProgress[khatmJuz]++;
+                }
+                if (userProgress.days[i]?.deep) {
+                    const deepJuz = parseInt(dayData.deep.replace("Juz' ", "")) - 1;
+                    juzProgress[deepJuz]++;
+                }
+                if (userProgress.days[i]?.light) {
+                    const lightJuz = parseInt(dayData.light.replace("Juz' ", "")) - 1;
+                    juzProgress[lightJuz]++;
+                }
+            }
+            
+            if (juzChart) {
+                juzChart.data.datasets[0].data = juzProgress;
+                juzChart.update();
+            } else {
+                juzChart = new Chart(juzProgressChart, {
+                    type: 'bar',
+                    data: {
+                        labels: Array.from({length: 30}, (_, i) => `Juz' ${i+1}`),
+                        datasets: [
+                            {
+                                label: 'Times Completed',
+                                data: juzProgress,
+                                backgroundColor: function(context) {
+                                    const value = context.dataset.data[context.dataIndex];
+                                    if (value === 0) return 'rgba(189, 195, 199, 0.7)';
+                                    if (value === 1) return 'rgba(52, 152, 219, 0.7)';
+                                    if (value === 2) return 'rgba(26, 188, 156, 0.7)';
+                                    return 'rgba(46, 204, 113, 0.7)';
+                                },
+                                borderColor: function(context) {
+                                    const value = context.dataset.data[context.dataIndex];
+                                    if (value === 0) return 'rgba(189, 195, 199, 1)';
+                                    if (value === 1) return 'rgba(52, 152, 219, 1)';
+                                    if (value === 2) return 'rgba(26, 188, 156, 1)';
+                                    return 'rgba(46, 204, 113, 1)';
+                                },
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { stepSize: 1 },
+                                title: {
+                                    display: true,
+                                    text: 'Completion Count'
+                                }
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: "Juz' Progress Overview"
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Save progress to localStorage
+        function saveProgress() {
+            userProgress.lastSaved = new Date().toISOString();
+            localStorage.setItem('quranProgress', JSON.stringify(userProgress));
+            alert("Progress saved!");
+        }
+        
+        // Reset progress and update display
+        function resetProgress() {
+            if (confirm("Are you sure you want to reset your progress?")) {
+                userProgress = initializeProgress();
+                localStorage.setItem('quranProgress', JSON.stringify(userProgress));
+                renderTable();
+                updateProgressDisplay();
+            }
+        }
+        
+        saveBtn.addEventListener('click', saveProgress);
+        resetBtn.addEventListener('click', resetProgress);
+        
+        populateDaySelector();
+        renderTable();
+        updateProgressDisplay();
+    </script>
+</body>
+</html>
